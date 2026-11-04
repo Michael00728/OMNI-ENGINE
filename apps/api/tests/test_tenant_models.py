@@ -51,3 +51,4 @@ def test_migration_enables_forced_rls_and_restricts_runtime_grants() -> None:
     assert "GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_memberships TO omni_app" not in migration
     assert "GRANT SELECT, INSERT ON audit_events TO omni_app" in migration
     assert "GRANT SELECT, INSERT, UPDATE, DELETE ON audit_events TO omni_app" not in migration
+    assert "GRANT SELECT ON alembic_version TO omni_app" in migration
