@@ -1,5 +1,9 @@
 \getenv app_password OMNI_APP_DB_PASSWORD
+\getenv migrator_password OMNI_MIGRATOR_DB_PASSWORD
 \getenv database_name POSTGRES_DB
 CREATE ROLE omni_app LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+CREATE ROLE omni_migrator LOGIN PASSWORD :'migrator_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 GRANT CONNECT ON DATABASE :"database_name" TO omni_app;
+GRANT CONNECT ON DATABASE :"database_name" TO omni_migrator;
 GRANT USAGE ON SCHEMA public TO omni_app;
+GRANT USAGE, CREATE ON SCHEMA public TO omni_migrator;
