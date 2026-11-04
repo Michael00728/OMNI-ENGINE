@@ -7,6 +7,7 @@ import re
 from datetime import date, datetime, timezone
 from enum import StrEnum
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -50,8 +51,11 @@ class SourceRecord(BaseModel):
     @field_validator("canonical_url")
     @classmethod
     def require_https_url(cls, value: str) -> str:
-        if not value.startswith("https://"):
-            raise ValueError("canonical_url must use HTTPS")
+        parsed = urlsplit(value)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError("canonical_url must be a valid HTTPS URL with a hostname")
+        if parsed.username or parsed.password:
+            raise ValueError("canonical_url must not contain embedded credentials")
         return value
 
     @field_validator("content_sha256")
