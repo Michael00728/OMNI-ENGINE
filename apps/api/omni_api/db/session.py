@@ -5,10 +5,11 @@ from contextlib import contextmanager
 from typing import Iterator
 from uuid import UUID
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from omni_api.config import get_settings
+from omni_api.db.models import TenantMembership
 
 
 _engine: Engine | None = None
@@ -40,7 +41,7 @@ def get_db() -> Generator[Session, None, None]:
 
 @contextmanager
 def tenant_transaction(session: Session, tenant_id: UUID) -> Iterator[Session]:
-    """Start a transaction and set transaction-local PostgreSQL RLS tenant context."""
+    """Set transaction-local RLS context; this low-level helper does not authenticate users."""
     if session.in_transaction():
         raise RuntimeError("tenant_transaction requires a session with no active transaction")
     with session.begin():
@@ -49,6 +50,23 @@ def tenant_transaction(session: Session, tenant_id: UUID) -> Iterator[Session]:
             {"tenant_id": str(tenant_id)},
         )
         yield session
+
+
+@contextmanager
+def authorized_tenant_transaction(
+    session: Session, tenant_id: UUID, authenticated_user_id: UUID
+) -> Iterator[tuple[Session, str]]:
+    """Set RLS context, then verify the authenticated user's membership before yielding."""
+    with tenant_transaction(session, tenant_id) as scoped_session:
+        role = scoped_session.execute(
+            select(TenantMembership.role).where(
+                TenantMembership.tenant_id == tenant_id,
+                TenantMembership.user_id == authenticated_user_id,
+            )
+        ).scalar_one_or_none()
+        if role is None:
+            raise PermissionError("User is not an active member of this tenant")
+        yield scoped_session, role
 
 
 def check_database() -> bool:
