@@ -68,6 +68,8 @@ jobs:
           OMNI_MIGRATION_DATABASE_URL: postgresql+psycopg://omni_migrator:migrator-test-password@localhost:5432/omni_engine
         run: alembic upgrade head
       - name: Run API and PostgreSQL isolation tests
+        env:
+          OMNI_DATABASE_URL: postgresql+psycopg://omni_app:runtime-test-password@localhost:5432/omni_engine
         run: python -m pytest
       - name: Run Ruff checks
         run: ruff check apps/api
