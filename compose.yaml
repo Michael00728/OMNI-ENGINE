@@ -6,6 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-omni_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       OMNI_APP_DB_PASSWORD: ${OMNI_APP_DB_PASSWORD:?Set OMNI_APP_DB_PASSWORD in .env}
+      OMNI_MIGRATOR_DB_PASSWORD: ${OMNI_MIGRATOR_DB_PASSWORD:?Set OMNI_MIGRATOR_DB_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/01-create-runtime-role.sql:/docker-entrypoint-initdb.d/01-create-runtime-role.sql:ro
