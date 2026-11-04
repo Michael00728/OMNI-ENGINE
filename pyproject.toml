@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omni-engine-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Evidence-based credit intelligence platform API"
 requires-python = ">=3.12"
 dependencies = [
+  "alembic>=1.14,<2.0",
   "fastapi>=0.115,<1.0",
+  "psycopg[binary]>=3.2,<4.0",
   "pydantic-settings>=2.6,<3.0",
+  "sqlalchemy>=2.0,<3.0",
   "uvicorn[standard]>=0.30,<1.0",
 ]
 
