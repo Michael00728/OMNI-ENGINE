@@ -8,25 +8,25 @@
 
 ## Local environment
 1. From the repository root, copy `.env.example` to `.env`.
-2. Set two different strong local-only passwords: `POSTGRES_PASSWORD` for the database administrator and `OMNI_APP_DB_PASSWORD` for the restricted API role. Keep both passwords URL-safe (letters, digits, `_`, and `-`) because they are embedded in database connection URLs.
+2. Set three different local-only passwords: `POSTGRES_PASSWORD` for the database administrator, `OMNI_MIGRATOR_DB_PASSWORD` for the non-superuser migration role, and `OMNI_APP_DB_PASSWORD` for the restricted API runtime role. Keep the migration and runtime passwords URL-safe (letters, digits, `_`, and `-`) because they are embedded in database connection URLs.
 3. Start services with `docker compose up --build -d`.
-4. The PostgreSQL initialization script creates `omni_app` with `NOBYPASSRLS`; the API receives only this role's connection string.
-5. Apply the schema migration from the repository root. In PowerShell, read the administrator password from `.env` and pass it only to the one-off migration process:
+4. The PostgreSQL initialization script creates `omni_migrator` and `omni_app`. The API receives only the `omni_app` connection string.
+5. Apply the schema migration from the repository root. In PowerShell, read the migration password from `.env` and pass it only to the one-off Alembic process:
 
 ```powershell
-$adminPassword = ((Get-Content .env | Where-Object { $_ -match '^POSTGRES_PASSWORD=' } | Select-Object -First 1) -replace '^POSTGRES_PASSWORD=', '').Trim('"')
-if (-not $adminPassword) { throw 'POSTGRES_PASSWORD was not found in .env' }
-$env:OMNI_MIGRATION_DATABASE_URL = "postgresql+psycopg://omni_admin:${adminPassword}@db:5432/omni_engine"
+$migratorPassword = ((Get-Content .env | Where-Object { $_ -match '^OMNI_MIGRATOR_DB_PASSWORD=' } | Select-Object -First 1) -replace '^OMNI_MIGRATOR_DB_PASSWORD=', '').Trim('"')
+if (-not $migratorPassword) { throw 'OMNI_MIGRATOR_DB_PASSWORD was not found in .env' }
+$env:OMNI_MIGRATION_DATABASE_URL = "postgresql+psycopg://omni_migrator:${migratorPassword}@db:5432/omni_engine"
 docker compose exec -e OMNI_MIGRATION_DATABASE_URL=$env:OMNI_MIGRATION_DATABASE_URL api alembic upgrade head
 Remove-Item Env:OMNI_MIGRATION_DATABASE_URL
-Remove-Variable adminPassword
+Remove-Variable migratorPassword
 ```
 
-The migration credential is supplied only to the one-off Alembic process. It is not part of the running API service environment. If `POSTGRES_USER` or `POSTGRES_DB` differs from the defaults, adjust the migration URL accordingly.
+The migration credential is supplied only to the one-off Alembic process. It is not part of the running API service environment. If `POSTGRES_DB` differs from `omni_engine`, adjust the migration URL accordingly.
 
 6. Open the web app at http://localhost:3000, API liveness at http://localhost:8000/api/v1/health, and database readiness at http://localhost:8000/api/v1/ready.
 
-The database schema is not created automatically when the API starts. Run Alembic migrations explicitly with the privileged migration credential.
+The database schema is not created automatically when the API starts. Run Alembic migrations explicitly with the dedicated migration-role credential.
 
 ## API tests
 From the repository root:
