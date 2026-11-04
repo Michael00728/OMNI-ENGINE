@@ -1,4 +1,5 @@
 \getenv app_password OMNI_APP_DB_PASSWORD
+\getenv database_name POSTGRES_DB
 CREATE ROLE omni_app LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
-GRANT CONNECT ON DATABASE omni_engine TO omni_app;
+GRANT CONNECT ON DATABASE :"database_name" TO omni_app;
 GRANT USAGE ON SCHEMA public TO omni_app;
