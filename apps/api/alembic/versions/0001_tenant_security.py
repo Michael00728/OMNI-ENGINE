@@ -75,6 +75,8 @@ def upgrade() -> None:
     op.execute("GRANT SELECT ON tenant_memberships TO omni_app")
     # Audit records are append-only for the runtime role.
     op.execute("GRANT SELECT, INSERT ON audit_events TO omni_app")
+    # Read-only schema version is needed by the API readiness check.
+    op.execute("GRANT SELECT ON alembic_version TO omni_app")
 
 
 def downgrade() -> None:
