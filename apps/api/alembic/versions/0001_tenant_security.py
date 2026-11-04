@@ -70,9 +70,10 @@ def upgrade() -> None:
             )'''
         ))
 
-    # The runtime role has read/write access to tenant data, but audit records are insert/read only.
+    # Tenant and membership records are provisioner-managed; runtime can only read them.
     op.execute("GRANT SELECT ON tenants TO omni_app")
-    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_memberships TO omni_app")
+    op.execute("GRANT SELECT ON tenant_memberships TO omni_app")
+    # Audit records are append-only for the runtime role.
     op.execute("GRANT SELECT, INSERT ON audit_events TO omni_app")
 
 
