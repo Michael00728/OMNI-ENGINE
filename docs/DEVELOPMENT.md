@@ -8,7 +8,7 @@
 
 ## Local environment
 1. From the repository root, copy `.env.example` to `.env`.
-2. Set two different strong local-only passwords: `POSTGRES_PASSWORD` for the database administrator and `OMNI_APP_DB_PASSWORD` for the restricted API role.
+2. Set two different strong local-only passwords: `POSTGRES_PASSWORD` for the database administrator and `OMNI_APP_DB_PASSWORD` for the restricted API role. Keep the runtime password URL-safe (letters, digits, `_`, and `-`) because it is embedded in the SQLAlchemy connection URL.
 3. Start services with `docker compose up --build -d`.
 4. The PostgreSQL initialization script creates `omni_app` with `NOBYPASSRLS`; the API receives only this role's connection string.
 5. Apply the schema migration from the repository root. In PowerShell:
@@ -49,4 +49,4 @@ npm run dev
 The first npm install generates a lockfile. Commit that lockfile before enabling reproducible web CI.
 
 ## Safety
-Do not use real consumer reports or unmasked PII in this foundation build. Authentication, tenant membership enforcement at the API boundary, encryption, malware scanning, protected document storage, retention controls, and PostgreSQL cross-tenant integration tests are prerequisites for production data.
+Do not use real consumer reports or unmasked PII in this foundation build. Authentication, authorization, encryption, malware scanning, protected document storage, retention controls, and operational restore procedures are prerequisites for production data.
