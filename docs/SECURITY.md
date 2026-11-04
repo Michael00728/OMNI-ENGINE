@@ -5,7 +5,9 @@
 - CORS uses explicit origins and rejects wildcard configuration.
 - The API container runs as a non-root user.
 - PostgreSQL is not published to the host by default.
-- PostgreSQL has separate administrative and API runtime roles. The API receives only the runtime password.
+- PostgreSQL separates the database administrator, Alembic migration role, and API runtime role.
+- The API receives only the `omni_app` connection string; it never receives administrator or migration credentials.
+- The migration role is a non-superuser with schema creation rights for controlled migrations, not a superuser.
 - The API role is created with `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, and `NOBYPASSRLS`.
 - Tenant tables use PostgreSQL row-level security (RLS), enabled and forced.
 - RLS denies access when transaction-local `app.tenant_id` is absent.
@@ -13,8 +15,8 @@
 - `authorized_tenant_transaction` verifies that the tenant is active and the authenticated user has a membership under the selected tenant RLS context before yielding access.
 - Tenant and membership records are read-only to the API runtime; tenant provisioning is a separate privileged operation.
 - Audit events are append-only for the runtime role: it receives SELECT and INSERT, not UPDATE or DELETE.
-- Alembic requires a separately supplied privileged migration URL; the API process does not receive that credential.
-- GitHub Actions runs migrations and PostgreSQL integration tests with a separate restricted runtime role.
+- Alembic requires a separately supplied migration-role URL; the API process does not receive that credential.
+- GitHub Actions runs migrations with the migration role and PostgreSQL integration tests with the restricted runtime role.
 
 ## Tenant context security contract
 
