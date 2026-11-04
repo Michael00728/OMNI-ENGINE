@@ -18,8 +18,9 @@ OMNI-ENGINE is an independently developed platform for evidence-based credit int
 - `apps/web`: Next.js App Router and TypeScript interface.
 - `apps/api`: FastAPI service and domain modules.
 - `packages/contracts`: shared API contracts and schemas (planned).
-- `infra`: Docker Compose and deployment assets.
-- `docs`: architecture, security, governance, and decision records.
+- `compose.yaml`: local multi-service definition for the web app, API, and PostgreSQL.
+- `.github/workflows`: automated quality checks.
+- `docs`: architecture, security, governance, and development guidance.
 
 ## Development
 
