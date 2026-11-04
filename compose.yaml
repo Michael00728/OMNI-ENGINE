@@ -20,8 +20,11 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: .env
     environment:
+      OMNI_ENVIRONMENT: ${OMNI_ENVIRONMENT:-development}
+      OMNI_LOG_LEVEL: ${OMNI_LOG_LEVEL:-INFO}
+      OMNI_CORS_ORIGINS: ${OMNI_CORS_ORIGINS:-http://localhost:3000}
+      OMNI_DOCS_ENABLED: ${OMNI_DOCS_ENABLED:-true}
       OMNI_DATABASE_URL: postgresql+psycopg://omni_app:${OMNI_APP_DB_PASSWORD:?Set OMNI_APP_DB_PASSWORD in .env}@db:5432/${POSTGRES_DB:-omni_engine}
     ports:
       - "8000:8000"
