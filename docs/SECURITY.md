@@ -10,20 +10,22 @@
 - Tenant tables use PostgreSQL row-level security (RLS), enabled and forced.
 - RLS denies access when transaction-local `app.tenant_id` is absent.
 - Tenant context is set with transaction-local `set_config`; it clears automatically at transaction end.
+- `authorized_tenant_transaction` checks the verified user's membership under the selected tenant RLS context before yielding access.
+- Tenant and membership records are read-only to the API runtime; tenant provisioning is a separate privileged operation.
 - Audit events are append-only for the runtime role: it receives SELECT and INSERT, not UPDATE or DELETE.
 - Alembic requires a separately supplied privileged migration URL; the API process does not receive that credential.
-- GitHub Actions uses read-only repository permissions for CI.
+- GitHub Actions runs migrations and PostgreSQL integration tests with a separate restricted runtime role.
 
 ## Tenant context security contract
 
-The `tenant_transaction` helper accepts a tenant UUID and applies it to the current PostgreSQL transaction. It is not an authentication mechanism. Production request handlers must obtain the tenant identifier from a verified authenticated principal and validate the user's active membership before entering the helper. Never trust an unverified tenant ID from a request header, URL parameter, or request body. No client-facing tenant data endpoints are enabled in this increment.
+Authentication is not implemented in this foundation. Future request handlers must derive `authenticated_user_id` from a verified identity token or session, never from a caller-controlled field. The selected tenant ID is not trusted by itself. Use `authorized_tenant_transaction(session, tenant_id, authenticated_user_id)`: it sets transaction-local RLS context, queries the membership record within that tenant scope, and refuses to yield if no membership exists. Do not use the lower-level `tenant_transaction` helper directly in client-facing handlers. Never trust an unverified tenant ID from a request header, URL parameter, or request body. No client-facing tenant data endpoints are enabled in this increment.
 
 ## Required before production or real consumer data
-1. Implement authentication, authorization, tenant-scoped access checks, and tested role policies.
+1. Implement authentication, authorization, role-based permission checks, and API request protections around the authorized tenant transaction helper.
 2. Add encryption at rest and in transit, managed key rotation, and secret-manager integration.
 3. Add malware scanning and quarantine before document parsing; fail closed if scanning is unavailable.
 4. Add PII minimization, field-level protection, retention schedules, deletion workflows, and audit access trails.
-5. Add database backups, restore drills, and PostgreSQL integration tests proving cross-tenant isolation with the actual runtime role.
+5. Add database backups, restore drills, and operational monitoring; keep PostgreSQL cross-tenant integration tests passing in CI.
 6. Add dependency, container, secret, and static-analysis scanning in CI.
 7. Complete threat modeling, incident response, and privacy impact review.
 
