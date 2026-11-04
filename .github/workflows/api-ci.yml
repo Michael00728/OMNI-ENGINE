@@ -47,7 +47,10 @@ jobs:
           import os
           import psycopg
 
-          with psycopg.connect(os.environ["OMNI_TEST_ADMIN_DATABASE_URL"], autocommit=True) as conn:
+          admin_url = os.environ["OMNI_TEST_ADMIN_DATABASE_URL"].replace(
+              "postgresql+psycopg://", "postgresql://", 1
+          )
+          with psycopg.connect(admin_url, autocommit=True) as conn:
               conn.execute(
                   "CREATE ROLE omni_app LOGIN PASSWORD 'runtime-test-password' "
                   "NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
