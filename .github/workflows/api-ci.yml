@@ -42,12 +42,19 @@ jobs:
       - name: Install API and test dependencies
         run: python -m pip install -e ".[dev]"
       - name: Create restricted PostgreSQL runtime role
-        run: >-
-          PGPASSWORD=admin-test-password psql -h localhost -U omni_admin -d omni_engine
-          -v ON_ERROR_STOP=1
-          -c "CREATE ROLE omni_app LOGIN PASSWORD 'runtime-test-password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;"
-          -c "GRANT CONNECT ON DATABASE omni_engine TO omni_app;"
-          -c "GRANT USAGE ON SCHEMA public TO omni_app;"
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+
+          with psycopg.connect(os.environ["OMNI_TEST_ADMIN_DATABASE_URL"], autocommit=True) as conn:
+              conn.execute(
+                  "CREATE ROLE omni_app LOGIN PASSWORD 'runtime-test-password' "
+                  "NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+              )
+              conn.execute("GRANT CONNECT ON DATABASE omni_engine TO omni_app")
+              conn.execute("GRANT USAGE ON SCHEMA public TO omni_app")
+          PY
       - name: Apply database migrations
         run: alembic upgrade head
       - name: Run API and PostgreSQL isolation tests
