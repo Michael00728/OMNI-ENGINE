@@ -21,7 +21,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("status", sa.String(length=20), server_default="active", nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.CheckConstraint("status IN ('active', 'suspended', 'closed')", name="ck_tenants_status_valid"),
+        sa.CheckConstraint("status IN ('active', 'suspended', 'closed')", name=op.f("ck_tenants_status_valid")),
         sa.PrimaryKeyConstraint("id", name="pk_tenants"),
     )
     op.create_table(
@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Uuid(), nullable=False),
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.CheckConstraint("role IN ('owner', 'admin', 'analyst', 'read_only')", name="ck_tenant_memberships_role_valid"),
+        sa.CheckConstraint("role IN ('owner', 'admin', 'analyst', 'read_only')", name=op.f("ck_tenant_memberships_role_valid")),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE", name="fk_tenant_memberships_tenant_id_tenants"),
         sa.PrimaryKeyConstraint("id", name="pk_tenant_memberships"),
         sa.UniqueConstraint("tenant_id", "user_id", name="uq_membership_tenant_user"),
@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("resource_id", sa.String(length=200), nullable=True),
         sa.Column("event_metadata", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.CheckConstraint("length(action) BETWEEN 1 AND 120", name="ck_audit_events_action_length_valid"),
+        sa.CheckConstraint("length(action) BETWEEN 1 AND 120", name=op.f("ck_audit_events_action_length_valid")),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="RESTRICT", name="fk_audit_events_tenant_id_tenants"),
         sa.PrimaryKeyConstraint("id", name="pk_audit_events"),
     )
