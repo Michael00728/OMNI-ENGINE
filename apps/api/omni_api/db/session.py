@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from omni_api.config import get_settings
 from omni_api.db.models import Tenant, TenantMembership, TenantStatus
 
+CURRENT_SCHEMA_REVISION = "0001_tenant_security"
 
 _engine: Engine | None = None
 _SessionFactory: sessionmaker[Session] | None = None
@@ -48,7 +49,7 @@ def tenant_transaction(session: Session, tenant_id: UUID) -> Iterator[Session]:
         session.execute(
             text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
             {"tenant_id": str(tenant_id)},
-        )
+        ).scalar_one()
         yield session
 
 
@@ -76,6 +77,10 @@ def authorized_tenant_transaction(
 
 
 def check_database() -> bool:
-    """Check database connectivity without exposing connection details."""
+    """Require connectivity and the expected Alembic schema revision."""
     with get_engine().connect() as connection:
-        return connection.execute(text("SELECT 1")).scalar_one() == 1
+        connection.execute(text("SELECT 1")).scalar_one()
+        revision = connection.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one_or_none()
+        return revision == CURRENT_SCHEMA_REVISION
