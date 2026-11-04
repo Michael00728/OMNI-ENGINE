@@ -27,8 +27,18 @@ def test_valid_source_preserves_authority_and_hash() -> None:
 
 
 def test_http_source_is_rejected() -> None:
-    with pytest.raises(ValidationError, match="HTTPS"):
+    with pytest.raises(ValidationError, match="valid HTTPS"):
         SourceRecord.model_validate({**BASE, "canonical_url": "http://example.gov/source"})
+
+
+def test_https_url_without_hostname_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="valid HTTPS"):
+        SourceRecord.model_validate({**BASE, "canonical_url": "https://"})
+
+
+def test_embedded_url_credentials_are_rejected() -> None:
+    with pytest.raises(ValidationError, match="embedded credentials"):
+        SourceRecord.model_validate({**BASE, "canonical_url": "https://user:secret@example.gov/source"})
 
 
 def test_invalid_hash_is_rejected() -> None:
