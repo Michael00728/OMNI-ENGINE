@@ -42,10 +42,12 @@ def test_tenant_ids_are_uuid_columns() -> None:
     assert TenantMembership.__table__.c.tenant_id.type.python_type is type(uuid4())
 
 
-def test_migration_enables_forced_rls_and_append_only_audit_access() -> None:
+def test_migration_enables_forced_rls_and_restricts_runtime_grants() -> None:
     migration = MIGRATION.read_text(encoding="utf-8")
     assert "ENABLE ROW LEVEL SECURITY" in migration
     assert "FORCE ROW LEVEL SECURITY" in migration
     assert "current_setting('app.tenant_id', true)" in migration
+    assert "GRANT SELECT ON tenant_memberships TO omni_app" in migration
+    assert "GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_memberships TO omni_app" not in migration
     assert "GRANT SELECT, INSERT ON audit_events TO omni_app" in migration
     assert "GRANT SELECT, INSERT, UPDATE, DELETE ON audit_events TO omni_app" not in migration
