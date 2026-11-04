@@ -53,13 +53,23 @@ def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
                 assert connection.execute(text("SELECT user_id FROM tenant_memberships")).scalars().all() == [user_a]
                 assert connection.execute(text("SELECT tenant_id FROM audit_events")).scalars().all() == [tenant_a]
 
+                # The tenant context cannot insert an audit record for a different tenant.
+                with pytest.raises(DBAPIError):
+                    with connection.begin_nested():
+                        connection.execute(
+                            text("INSERT INTO audit_events (id, tenant_id, action, resource_type) VALUES (:id, :tenant_id, 'case.read', 'case')"),
+                            {"id": uuid4(), "tenant_id": tenant_b},
+                        )
+
+                # Membership changes are reserved for a separate, privileged provisioning path.
                 with pytest.raises(DBAPIError):
                     with connection.begin_nested():
                         connection.execute(
                             text("INSERT INTO tenant_memberships (id, tenant_id, user_id, role) VALUES (:id, :tenant_id, :user_id, 'analyst')"),
-                            {"id": uuid4(), "tenant_id": tenant_b, "user_id": uuid4()},
+                            {"id": uuid4(), "tenant_id": tenant_a, "user_id": uuid4()},
                         )
 
+                # Runtime role cannot rewrite existing audit evidence.
                 with pytest.raises(DBAPIError):
                     with connection.begin_nested():
                         connection.execute(
