@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from omni_api.db.session import authorized_tenant_transaction
+from omni_api.db.session import authorized_tenant_transaction, check_database
 
 ADMIN_URL = os.getenv("OMNI_TEST_ADMIN_DATABASE_URL")
 RUNTIME_URL = os.getenv("OMNI_TEST_RUNTIME_DATABASE_URL")
@@ -16,6 +16,10 @@ pytestmark = pytest.mark.skipif(
     not ADMIN_URL or not RUNTIME_URL,
     reason="PostgreSQL RLS integration URLs are not configured",
 )
+
+
+def test_runtime_role_sees_current_database_schema_revision() -> None:
+    assert check_database() is True
 
 
 def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
