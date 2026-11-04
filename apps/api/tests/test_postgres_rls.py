@@ -21,20 +21,25 @@ pytestmark = pytest.mark.skipif(
 def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
     admin_engine = create_engine(ADMIN_URL, future=True)
     runtime_engine = create_engine(RUNTIME_URL, future=True)
-    tenant_a, tenant_b = uuid4(), uuid4()
-    user_a, user_b = uuid4(), uuid4()
+    tenant_a, tenant_b, tenant_suspended = uuid4(), uuid4(), uuid4()
+    user_a, user_b, user_suspended = uuid4(), uuid4(), uuid4()
 
     try:
         with admin_engine.begin() as connection:
             connection.execute(
-                text("INSERT INTO tenants (id, name, status) VALUES (:id, :name, 'active')"),
-                [{"id": tenant_a, "name": "Tenant A"}, {"id": tenant_b, "name": "Tenant B"}],
+                text("INSERT INTO tenants (id, name, status) VALUES (:id, :name, :status)"),
+                [
+                    {"id": tenant_a, "name": "Tenant A", "status": "active"},
+                    {"id": tenant_b, "name": "Tenant B", "status": "active"},
+                    {"id": tenant_suspended, "name": "Tenant Suspended", "status": "suspended"},
+                ],
             )
             connection.execute(
                 text("INSERT INTO tenant_memberships (id, tenant_id, user_id, role) VALUES (:id, :tenant_id, :user_id, 'analyst')"),
                 [
                     {"id": uuid4(), "tenant_id": tenant_a, "user_id": user_a},
                     {"id": uuid4(), "tenant_id": tenant_b, "user_id": user_b},
+                    {"id": uuid4(), "tenant_id": tenant_suspended, "user_id": user_suspended},
                 ],
             )
             connection.execute(
@@ -49,7 +54,7 @@ def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
                 assert scoped.execute(text("SELECT user_id FROM tenant_memberships")).scalars().all() == [user_a]
                 assert scoped.execute(text("SELECT tenant_id FROM audit_events")).scalars().all() == [tenant_a]
 
-                # The tenant context cannot insert an audit record for a different tenant.
+                # RLS rejects a cross-tenant insert even when the runtime role has INSERT permission.
                 with pytest.raises(DBAPIError):
                     with scoped.begin_nested():
                         scoped.execute(
@@ -73,10 +78,15 @@ def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
                             {"tenant_id": tenant_a},
                         )
 
-            # An authenticated user with no membership cannot enter this tenant scope.
-            with pytest.raises(PermissionError, match="not an active member"):
+            # An authenticated user without membership cannot enter another tenant's scope.
+            with pytest.raises(PermissionError, match="not a member"):
                 with authorized_tenant_transaction(session, tenant_a, user_b):
                     pytest.fail("non-member must not enter tenant context")
+
+            # Even a member cannot enter a suspended tenant's scope.
+            with pytest.raises(PermissionError, match="Tenant is not active"):
+                with authorized_tenant_transaction(session, tenant_suspended, user_suspended):
+                    pytest.fail("suspended tenant must not grant access")
 
             # Transaction-local tenant context must be gone after commit or rollback.
             assert session.execute(text("SELECT count(*) FROM tenants")).scalar_one() == 0
