@@ -3,9 +3,9 @@
 This module stores provenance metadata only. It does not determine legal applicability.
 """
 
+import re
 from datetime import date, datetime, timezone
 from enum import StrEnum
-import re
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
