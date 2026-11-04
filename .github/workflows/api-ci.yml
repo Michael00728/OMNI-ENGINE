@@ -12,6 +12,24 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: omni_engine
+          POSTGRES_USER: omni_admin
+          POSTGRES_PASSWORD: admin-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U omni_admin -d omni_engine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      OMNI_TEST_ADMIN_DATABASE_URL: postgresql+psycopg://omni_admin:admin-test-password@localhost:5432/omni_engine
+      OMNI_TEST_RUNTIME_DATABASE_URL: postgresql+psycopg://omni_app:runtime-test-password@localhost:5432/omni_engine
+      OMNI_MIGRATION_DATABASE_URL: postgresql+psycopg://omni_admin:admin-test-password@localhost:5432/omni_engine
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -23,7 +41,16 @@ jobs:
           cache-dependency-path: pyproject.toml
       - name: Install API and test dependencies
         run: python -m pip install -e ".[dev]"
-      - name: Run API tests
+      - name: Create restricted PostgreSQL runtime role
+        run: >-
+          PGPASSWORD=admin-test-password psql -h localhost -U omni_admin -d omni_engine
+          -v ON_ERROR_STOP=1
+          -c "CREATE ROLE omni_app LOGIN PASSWORD 'runtime-test-password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;"
+          -c "GRANT CONNECT ON DATABASE omni_engine TO omni_app;"
+          -c "GRANT USAGE ON SCHEMA public TO omni_app;"
+      - name: Apply database migrations
+        run: alembic upgrade head
+      - name: Run API and PostgreSQL isolation tests
         run: python -m pytest
       - name: Run Ruff checks
         run: ruff check apps/api
