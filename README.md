@@ -2,7 +2,7 @@
 
 **Enterprise Credit Intelligence & Financial Optimization Platform**
 
-OMNI-ENGINE is an independent platform for evidence-based credit intelligence, regulatory research, dispute workflow support, financial education, and scenario analysis.
+OMNI-ENGINE is an independently developed platform for evidence-based credit intelligence, regulatory research, dispute workflow support, financial education, and scenario analysis.
 
 ## Engineering principles
 
@@ -31,4 +31,4 @@ This repository establishes the platform foundation. It does not yet provide pro
 
 ## Independence
 
-OMNI-ENGINE is a standalone product. It has no CDOS dependency, integration, shared runtime, or inherited code requirement.
+OMNI-ENGINE maintains its own source tree, dependency graph, runtime, data stores, and deployment configuration.
