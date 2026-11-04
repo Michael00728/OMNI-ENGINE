@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from omni_api.db.session import tenant_transaction
+from omni_api.db.session import authorized_tenant_transaction
 
 ADMIN_URL = os.getenv("OMNI_TEST_ADMIN_DATABASE_URL")
 RUNTIME_URL = os.getenv("OMNI_TEST_RUNTIME_DATABASE_URL")
@@ -43,36 +43,42 @@ def test_runtime_role_is_tenant_isolated_and_audit_is_append_only() -> None:
             )
 
         with Session(runtime_engine) as session:
-            with tenant_transaction(session, tenant_a):
-                assert session.execute(text("SELECT name FROM tenants")).scalars().all() == ["Tenant A"]
-                assert session.execute(text("SELECT user_id FROM tenant_memberships")).scalars().all() == [user_a]
-                assert session.execute(text("SELECT tenant_id FROM audit_events")).scalars().all() == [tenant_a]
+            with authorized_tenant_transaction(session, tenant_a, user_a) as (scoped, role):
+                assert role == "analyst"
+                assert scoped.execute(text("SELECT name FROM tenants")).scalars().all() == ["Tenant A"]
+                assert scoped.execute(text("SELECT user_id FROM tenant_memberships")).scalars().all() == [user_a]
+                assert scoped.execute(text("SELECT tenant_id FROM audit_events")).scalars().all() == [tenant_a]
 
                 # The tenant context cannot insert an audit record for a different tenant.
                 with pytest.raises(DBAPIError):
-                    with session.begin_nested():
-                        session.execute(
+                    with scoped.begin_nested():
+                        scoped.execute(
                             text("INSERT INTO audit_events (id, tenant_id, action, resource_type) VALUES (:id, :tenant_id, 'case.read', 'case')"),
                             {"id": uuid4(), "tenant_id": tenant_b},
                         )
 
                 # Membership changes are reserved for a separate, privileged provisioning path.
                 with pytest.raises(DBAPIError):
-                    with session.begin_nested():
-                        session.execute(
+                    with scoped.begin_nested():
+                        scoped.execute(
                             text("INSERT INTO tenant_memberships (id, tenant_id, user_id, role) VALUES (:id, :tenant_id, :user_id, 'analyst')"),
                             {"id": uuid4(), "tenant_id": tenant_a, "user_id": uuid4()},
                         )
 
                 # Runtime role cannot rewrite existing audit evidence.
                 with pytest.raises(DBAPIError):
-                    with session.begin_nested():
-                        session.execute(
+                    with scoped.begin_nested():
+                        scoped.execute(
                             text("UPDATE audit_events SET action = 'tampered' WHERE tenant_id = :tenant_id"),
                             {"tenant_id": tenant_a},
                         )
 
-            # Transaction-local tenant context must be gone after commit.
+            # An authenticated user with no membership cannot enter this tenant scope.
+            with pytest.raises(PermissionError, match="not an active member"):
+                with authorized_tenant_transaction(session, tenant_a, user_b):
+                    pytest.fail("non-member must not enter tenant context")
+
+            # Transaction-local tenant context must be gone after commit or rollback.
             assert session.execute(text("SELECT count(*) FROM tenants")).scalar_one() == 0
             assert session.execute(text("SELECT count(*) FROM audit_events")).scalar_one() == 0
             session.rollback()
