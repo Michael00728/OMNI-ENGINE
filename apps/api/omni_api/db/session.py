@@ -9,7 +9,7 @@ from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from omni_api.config import get_settings
-from omni_api.db.models import TenantMembership
+from omni_api.db.models import Tenant, TenantMembership, TenantStatus
 
 
 _engine: Engine | None = None
@@ -56,8 +56,14 @@ def tenant_transaction(session: Session, tenant_id: UUID) -> Iterator[Session]:
 def authorized_tenant_transaction(
     session: Session, tenant_id: UUID, authenticated_user_id: UUID
 ) -> Iterator[tuple[Session, str]]:
-    """Set RLS context, then verify the authenticated user's membership before yielding."""
+    """Verify an active tenant and authenticated user's membership before yielding."""
     with tenant_transaction(session, tenant_id) as scoped_session:
+        tenant_status = scoped_session.execute(
+            select(Tenant.status).where(Tenant.id == tenant_id)
+        ).scalar_one_or_none()
+        if tenant_status != TenantStatus.ACTIVE.value:
+            raise PermissionError("Tenant is not active")
+
         role = scoped_session.execute(
             select(TenantMembership.role).where(
                 TenantMembership.tenant_id == tenant_id,
@@ -65,7 +71,7 @@ def authorized_tenant_transaction(
             )
         ).scalar_one_or_none()
         if role is None:
-            raise PermissionError("User is not an active member of this tenant")
+            raise PermissionError("User is not a member of this tenant")
         yield scoped_session, role
 
 
