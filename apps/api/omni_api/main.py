@@ -37,13 +37,13 @@ def health() -> dict[str, str]:
 
 @app.get("/api/v1/ready", tags=["operations"])
 def readiness() -> dict[str, str]:
-    """Return readiness only when the configured database can execute a query."""
+    """Return ready only when the database is reachable and schema is current."""
     try:
         if not check_database():
-            raise SQLAlchemyError("Database readiness query returned an unexpected result")
+            raise SQLAlchemyError("Database schema is not at the expected migration revision")
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is unavailable",
+            detail="Database or schema is not ready",
         ) from exc
-    return {"status": "ready", "database": "ok"}
+    return {"status": "ready", "database": "ok", "schema": "current"}
