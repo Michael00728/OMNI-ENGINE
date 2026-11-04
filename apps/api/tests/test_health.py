@@ -16,11 +16,18 @@ def test_health_reports_liveness() -> None:
     }
 
 
-def test_readiness_reports_database_available(monkeypatch) -> None:
+def test_readiness_reports_database_and_schema_ready(monkeypatch) -> None:
     monkeypatch.setattr(main, "check_database", lambda: True)
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "database": "ok"}
+    assert response.json() == {"status": "ready", "database": "ok", "schema": "current"}
+
+
+def test_readiness_fails_when_schema_revision_is_not_current(monkeypatch) -> None:
+    monkeypatch.setattr(main, "check_database", lambda: False)
+    response = client.get("/api/v1/ready")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database or schema is not ready"}
 
 
 def test_readiness_fails_closed_when_database_is_unavailable(monkeypatch) -> None:
@@ -30,4 +37,4 @@ def test_readiness_fails_closed_when_database_is_unavailable(monkeypatch) -> Non
     monkeypatch.setattr(main, "check_database", unavailable)
     response = client.get("/api/v1/ready")
     assert response.status_code == 503
-    assert response.json() == {"detail": "Database is unavailable"}
+    assert response.json() == {"detail": "Database or schema is not ready"}
